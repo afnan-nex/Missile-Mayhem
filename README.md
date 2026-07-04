@@ -1,71 +1,171 @@
+<div align="center">
+
 # 🚀 Missile Mayhem
 
-A fast-paced 3D arcade missile flying game built with Three.js.
+### A Fast-Paced 3D Guided Missile Arcade Game Built with Three.js
 
-Guide your missile through a challenging obstacle course, navigate tunnels, fly through narrow openings, and destroy the final target before crashing.
+[![Live Demo](https://img.shields.io/badge/▶%20Play-Live%20Demo-ff6b00?style=for-the-badge)](https://afnan-nex.github.io/Missile-Mayhem/game.html)
+[![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/docs/Web/JavaScript)
+[![Three.js](https://img.shields.io/badge/Three.js-r128-000000?style=for-the-badge&logo=threedotjs)](https://threejs.org/)
+[![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/docs/Web/HTML)
+[![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)](https://developer.mozilla.org/docs/Web/CSS)
 
-## 🎮 Play Online
+**Guide a high-speed missile through an obstacle course, avoid hazards, and destroy the final target.**
 
-👉 **Play Here:** https://afnan-nex.github.io/Missile-Mayhem/game.html
+### 🎮 **[Play Missile Mayhem Online](https://afnan-nex.github.io/Missile-Mayhem/game.html)**
 
-## 📸 Features
+</div>
 
-- Smooth missile flight controls
-- Mouse and keyboard steering
-- Countdown launch sequence
-- Dynamic camera system
-- Particle effects and explosions
-- Obstacle-filled course
-- Target destruction objective
-- Retry and replay support
-- Built with Three.js
-- Single-file HTML game
+---
 
-## 🕹 Controls
+# 📸 Screenshots
 
-| Key | Action |
-|------|----------|
-| Mouse | Steer Missile |
+> Replace these placeholders with your screenshots.
+
+| Gameplay | Obstacle Course |
+|----------|-----------------|
+| ![](screenshots/gameplay.png) | ![](screenshots/course.png) |
+
+| Tunnel | Victory |
+|---------|----------|
+| ![](screenshots/tunnel.png) | ![](screenshots/victory.png) |
+
+---
+
+# ✨ Features
+
+<table>
+<tr>
+<td width="50%">
+
+### 🎯 Gameplay
+- Guided missile controls
+- Smooth arcade flight
+- Mouse & keyboard support
+- Boost system
+- Countdown launch
+- Dynamic chase camera
+
+</td>
+
+<td width="50%">
+
+### 🌍 Environment
+- Low-poly graphics
+- Procedural obstacle course
+- Buildings
+- Pillar canyon
+- Tunnel section
+- Final target objective
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+### 💥 Effects
+- Missile exhaust
+- Smoke trail
+- Explosion particles
+- Dynamic lighting
+- Camera smoothing
+
+</td>
+
+<td>
+
+### ⚙ Technical
+- Pure HTML
+- Vanilla JavaScript
+- Three.js
+- No build tools
+- Single-file project
+
+</td>
+</tr>
+</table>
+
+---
+
+# 🎮 Live Demo
+
+<div align="center">
+
+## ▶ Play Now
+
+### https://afnan-nex.github.io/Missile-Mayhem/game.html
+
+</div>
+
+---
+
+# 🎮 Controls
+
+| Control | Action |
+|----------|--------|
+| 🖱 Mouse | Steer Missile |
 | W / S | Pitch Up / Down |
 | A / D | Turn Left / Right |
 | Arrow Keys | Alternative Flight Controls |
-| Shift | Boost |
+| Left Shift | Boost |
 | ESC | Release Mouse |
 
-## 🎯 Objective
+---
 
-Your mission is simple:
+# 🎯 Mission
 
-1. Launch the missile.
-2. Fly through the obstacle course.
-3. Avoid walls, pillars, buildings, and tunnels.
-4. Reach the end of the course.
-5. Destroy the target to win.
+Your objective is simple:
 
-One collision can end the mission.
+- 🚀 Launch the missile
+- 🏛 Navigate the obstacle course
+- 🏠 Fly through the building opening
+- 🚇 Pass through the tunnel
+- 🎯 Destroy the target
+- 💥 Avoid crashing
 
-## 🛠 Technologies Used
+---
 
-- HTML5
-- CSS3
-- JavaScript
-- Three.js
+# 🛠 Built With
 
-## 📂 Project Structure
+| Technology | Purpose |
+|------------|----------|
+| HTML5 | Structure |
+| CSS3 | Styling |
+| JavaScript (ES6+) | Game Logic |
+| Three.js | 3D Rendering |
+| WebGL | Graphics |
+
+---
+
+# 📁 Project Structure
 
 ```text
-Missile-Mayhem/
+Missile-Mayhem
 │
 ├── game.html
-└── README.md
+├── README.md
+└── screenshots
+    ├── gameplay.png
+    ├── course.png
+    ├── tunnel.png
+    └── victory.png
 ```
 
-## 🚀 Running Locally
+---
+
+# 🚀 Run Locally
 
 Clone the repository:
 
 ```bash
 git clone https://github.com/Afnan-Nex/Missile-Mayhem.git
+```
+
+Go to the project:
+
+```bash
+cd Missile-Mayhem
 ```
 
 Open:
@@ -74,17 +174,72 @@ Open:
 game.html
 ```
 
-in your browser.
+---
 
-## 📜 License
+# 📈 Future Improvements
 
-This project is open source and available under the MIT License.
-
-## 👨‍💻 Author
-
-Afnan Nex
+- Multiple levels
+- Leaderboard
+- Sound effects
+- Background music
+- Mobile support
+- Difficulty selection
+- More obstacle types
+- Checkpoints
+- Power-ups
+- Better visual effects
 
 ---
 
-### Good Luck Pilot! 🚀
-Destroy the target and complete the mission.
+# 🤝 Contributing
+
+Contributions are welcome.
+
+1. Fork the repository
+2. Create a feature branch
+
+```bash
+git checkout -b feature/new-feature
+```
+
+3. Commit your changes
+
+```bash
+git commit -m "Add new feature"
+```
+
+4. Push the branch
+
+```bash
+git push origin feature/new-feature
+```
+
+5. Open a Pull Request
+
+---
+
+# ⭐ Support
+
+If you enjoyed this project, consider giving it a **⭐ Star** on GitHub.
+
+It helps the project reach more people!
+
+---
+
+# 📄 License
+
+This project is licensed under the **MIT License**.
+
+---
+
+<div align="center">
+
+## 🚀 Missile Mayhem
+
+**Built with ❤️ by Afnan Nex**
+
+### 🎮 Play Now
+
+https://afnan-nex.github.io/Missile-Mayhem/game.html
+
+</div>
