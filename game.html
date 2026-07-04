@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Guided Missile - Low Poly Mayhem</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #1a2630; font-family: 'Arial Black', Arial, sans-serif; }
+  #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  #hud {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    color: #fff; font-size: 54px; font-weight: 900; letter-spacing: 2px;
+    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000,
+                 0 0 12px rgba(255,140,0,0.5);
+    z-index: 10; pointer-events: none; user-select: none;
+  }
+  #countdown {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #ffcc00; font-size: 180px; font-weight: 900;
+    text-shadow: -6px -6px 0 #000, 6px -6px 0 #000, -6px 6px 0 #000, 6px 6px 0 #000,
+                 0 0 40px rgba(255,200,0,0.8);
+    z-index: 15; pointer-events: none; user-select: none;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  #countdown.visible { opacity: 1; }
+  #crosshair {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.4);
+    border-radius: 50%; pointer-events: none; z-index: 5;
+  }
+  #crosshair::before, #crosshair::after {
+    content: ''; position: absolute; background: rgba(255,255,255,0.4);
+  }
+  #crosshair::before { top: 50%; left: -10px; width: 40px; height: 2px; transform: translateY(-50%); }
+  #crosshair::after { left: 50%; top: -10px; width: 2px; height: 40px; transform: translateX(-50%); }
+  .overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    background: rgba(10,15,20,0.75); color: #fff; z-index: 20; text-align: center;
+    backdrop-filter: blur(4px);
+  }
+  .overlay h1 {
+    font-size: 72px; margin-bottom: 10px; letter-spacing: 4px;
+    text-shadow: -4px -4px 0 #000, 4px -4px 0 #000, -4px 4px 0 #000, 4px 4px 0 #000,
+                 0 0 20px rgba(255,140,0,0.6);
+  }
+  .overlay h2 {
+    font-size: 42px; margin-bottom: 20px;
+    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000;
+  }
+  .overlay p { font-size: 22px; margin: 8px 0; max-width: 600px; }
+  .overlay .time {
+    font-size: 64px; color: #ff9933; margin: 20px 0;
+    text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000;
+  }
+  .btn {
+    margin-top: 30px; padding: 16px 40px; font-size: 26px; font-weight: 900;
+    background: #ff6600; color: #fff; border: 4px solid #000; cursor: pointer;
+    text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+    box-shadow: 0 6px 0 #000; transition: all 0.1s; letter-spacing: 2px;
+  }
+  .btn:hover { background: #ff8833; transform: translateY(-2px); box-shadow: 0 8px 0 #000; }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #000; }
+  .hidden { display: none !important; }
+  .crash h1 { color: #ff3333; }
+  .win h1 { color: #ffcc00; }
+  #speedometer {
+    position: absolute; bottom: 20px; left: 20px; color: #fff; font-size: 20px;
+    text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+    z-index: 10; pointer-events: none;
+  }
+  #altitude {
+    position: absolute; bottom: 20px; right: 20px; color: #fff; font-size: 20px;
+    text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+    z-index: 10; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="hud">0:00.00</div>
+<div id="countdown"></div>
+<div id="crosshair"></div>
+<div id="speedometer">SPD: 0</div>
+<div id="altitude">ALT: 0</div>
+
+<div id="startScreen" class="overlay">
+  <h1>GUIDED MISSILE</h1>
+  <p>🚀 Pilot your missile through the obstacle course!</p>
+  <p>🎯 Hit the bright orange target block to win</p>
+  <p style="margin-top:20px; font-size:18px;">
+    <b>MOUSE</b> to steer &nbsp;|&nbsp; <b>WASD / ARROWS</b> alternative<br>
+    <b>SHIFT</b> boost &nbsp;|&nbsp; <b>ESC</b> release mouse
+  </p>
+  <button class="btn" id="startBtn">LAUNCH</button>
+</div>
+
+<div id="gameOverScreen" class="overlay crash hidden">
+  <h1>CRASHED!</h1>
+  <h2>Your missile was destroyed</h2>
+  <div class="time" id="crashTime">0:00.00</div>
+  <button class="btn" id="restartBtn1">RETRY</button>
+</div>
+
+<div id="winScreen" class="overlay win hidden">
+  <h1>TARGET DESTROYED!</h1>
+  <h2>Mission Complete</h2>
+  <div class="time" id="winTime">0:00.00</div>
+  <button class="btn" id="restartBtn2">PLAY AGAIN</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================================================
+// GUIDED MISSILE - REFACTORED FOR SMOOTH ARCADE FLIGHT
+// ============================================================
+// Senior AAA Gameplay Programmer Refactoring Notes:
+// - Replaced instant movement with realistic acceleration model
+// - Added 3-second countdown with engine spool-up
+// - Implemented inertia-based flight controls with smoothing
+// - Improved chase camera with better follow and look-ahead
+// - Made collisions more forgiving with grace margins
+// - Expanded starting area and widened early obstacles
+// - Added natural banking during turns and auto-leveling
+// - Reduced smoke particle generation for performance
+// - All movement is delta-time based and frame-rate independent
+// ============================================================
+
+let scene, camera, renderer, clock;
+let missile, missileGroup;
+let obstacles = []; // {mesh, box: THREE.Box3, shrinkFactor}
+let smokeParticles = [];
+let explosionParticles = [];
+let targetMesh = null;
+
+// Game state
+let gameState = 'start'; // 'start', 'countdown', 'playing', 'crashed', 'won'
+let countdownValue = 3;
+let countdownTimer = 0;
+let startTime = 0;
+let elapsedTime = 0;
+
+// Input
+let mouseDX = 0, mouseDY = 0;
+let smoothedMouseDX = 0, smoothedMouseDY = 0;
+let keys = {};
+let pointerLocked = false;
+
+// Physics - Acceleration Model
+const MAX_SPEED = 55;           // Cruising speed
+const BOOST_MULT = 1.6;         // Boost multiplier
+const ACCEL_TIME = 4.0;         // Seconds to reach cruising speed
+let currentSpeed = 0;           // Current forward speed
+let targetSpeed = 0;            // Target speed (ramps up during launch)
+let speedRampProgress = 0;      // 0 to 1 acceleration progress
+
+// Physics - Inertia-based Flight Controls
+const YAW_SENSITIVITY = 0.008;      // Tuned for responsive but controllable flight
+const PITCH_SENSITIVITY = 0.007;    // Slightly lower than yaw for stability
+const MAX_YAW_RATE = 4.0;           // Max radians/sec yaw rate
+const MAX_PITCH_RATE = 3.5;         // Max radians/sec pitch rate
+const BANKING_FACTOR = 0.4;         // How much roll during turns (reduced for subtlety)
+
+let yawVelocity = 0;        // Current angular velocity (radians/sec)
+let pitchVelocity = 0;      // Current angular velocity
+let rollVelocity = 0;       // Roll for banking
+let targetRoll = 0;         // Target roll angle for banking
+
+// Camera
+const CAMERA_OFFSET = new THREE.Vector3(0, 2.0, 7.5); // Farther back and higher
+const CAMERA_LOOK_AHEAD = 12.0;                        // Look further ahead
+const CAMERA_SMOOTHING = 0.28;                         // Faster follow (was 0.15)
+const BASE_FOV = 75;
+const BOOST_FOV = 90;
+let currentFOV = BASE_FOV;
+
+// Collision
+const MISSILE_COLLISION_RADIUS = 0.32;  // Reduced from 0.5 for forgiveness
+const OBSTACLE_SHRINK = 0.12;           // Shrink hitboxes by 12%
+const GRACE_MARGIN = 0.08;              // Small penetration allowed before crash
+
+// Smoke
+const SMOKE_SPAWN_RATE = 0.35;          // Reduced from 0.9
+const BOOST_SMOKE_RATE = 0.7;           // Reduced boost smoke
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a2630);
+  scene.fog = new THREE.Fog(0x1a2630, 30, 200);
+
+  camera = new THREE.PerspectiveCamera(BASE_FOV, window.innerWidth / window.innerHeight, 0.1, 500);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+  clock = new THREE.Clock();
+
+  // Lighting
+  const ambient = new THREE.AmbientLight(0x8899aa, 0.6);
+  scene.add(ambient);
+
+  const dirLight = new THREE.DirectionalLight(0xffeecc, 1.0);
+  dirLight.position.set(50, 100, 30);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.width = 1024;
+  dirLight.shadow.mapSize.height = 1024;
+  dirLight.shadow.camera.left = -100;
+  dirLight.shadow.camera.right = 100;
+  dirLight.shadow.camera.top = 100;
+  dirLight.shadow.camera.bottom = -100;
+  dirLight.shadow.camera.near = 1;
+  dirLight.shadow.camera.far = 300;
+  scene.add(dirLight);
+
+  const hemi = new THREE.HemisphereLight(0x88aacc, 0x223344, 0.4);
+  scene.add(hemi);
+
+  createFloor();
+  createMissile();
+  createCourse();
+
+  setupInput();
+  window.addEventListener('resize', onResize);
+
+  animate();
+}
+
+// ============================================================
+// PROCEDURAL FLOOR TEXTURE
+// ============================================================
+function createGridTexture() {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#b8b8b8';
+  ctx.fillRect(0, 0, size, size);
+  ctx.strokeStyle = '#3a3a3a';
+  ctx.lineWidth = 3;
+  const step = size / 8;
+  for (let i = 0; i <= 8; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i * step, 0);
+    ctx.lineTo(i * step, size);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, i * step);
+    ctx.lineTo(size, i * step);
+    ctx.stroke();
+  }
+  for (let i = 0; i < 200; i++) {
+    ctx.fillStyle = `rgba(80,80,80,${Math.random() * 0.15})`;
+    ctx.fillRect(Math.random() * size, Math.random() * size, 2, 2);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(40, 40);
+  return tex;
+}
+
+function createFloor() {
+  const tex = createGridTexture();
+  const floorGeo = new THREE.PlaneGeometry(800, 800);
+  const floorMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, 0, 200);
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  // Floor collision (death plane)
+  obstacles.push({
+    mesh: floor,
+    box: new THREE.Box3(new THREE.Vector3(-400, -10, -200), new THREE.Vector3(400, 0, 600)),
+    isFloor: true
+  });
+}
+
+// ============================================================
+// MISSILE
+// ============================================================
+function createMissile() {
+  missileGroup = new THREE.Group();
+
+  // Body cylinder - aligned along Z axis
+  // CylinderGeometry is along Y by default, rotate -PI/2 around X to align along +Z
+  const bodyGeo = new THREE.CylinderGeometry(0.35, 0.35, 2.2, 10);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.5, metalness: 0.3 });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.rotation.x = -Math.PI / 2; // Align along +Z
+  body.castShadow = true;
+  missileGroup.add(body);
+
+  // Nose cone - points along +Z
+  // ConeGeometry points along +Y by default, rotate -PI/2 around X to point along +Z
+  const noseGeo = new THREE.ConeGeometry(0.35, 0.8, 10);
+  const noseMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.4 });
+  const nose = new THREE.Mesh(noseGeo, noseMat);
+  nose.rotation.x = -Math.PI / 2; // Point along +Z
+  nose.position.z = 1.5; // Position at +Z end of body
+  nose.castShadow = true;
+  missileGroup.add(nose);
+
+  // Dark stripe - around the body
+  const stripeGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.2, 10);
+  const stripeMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+  const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+  stripe.rotation.x = -Math.PI / 2;
+  stripe.position.z = 0.5;
+  missileGroup.add(stripe);
+
+  // Fins - four fins around the rear (-Z end)
+  const finMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 });
+  for (let i = 0; i < 4; i++) {
+    const finGeo = new THREE.BoxGeometry(0.08, 0.6, 0.7);
+    const fin = new THREE.Mesh(finGeo, finMat);
+    const angle = (i / 4) * Math.PI * 2;
+    // Position fins around the Z axis at the -Z end
+    fin.position.set(Math.cos(angle) * 0.35, Math.sin(angle) * 0.35, -0.8);
+    fin.rotation.z = angle; // Rotate fin to face outward
+    fin.castShadow = true;
+    missileGroup.add(fin);
+  }
+
+  // Exhaust nozzle - at -Z end
+  const exhaustGeo = new THREE.CylinderGeometry(0.28, 0.2, 0.3, 8);
+  const exhaustMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0x553300, emissiveIntensity: 0.5 });
+  const exhaust = new THREE.Mesh(exhaustGeo, exhaustMat);
+  exhaust.rotation.x = -Math.PI / 2; // Align along Z
+  exhaust.position.z = -1.25; // Position at -Z end
+  missileGroup.add(exhaust);
+
+  // Flame - points along -Z (backward)
+  // ConeGeometry points along +Y, rotate PI/2 around X to point along -Z
+  const flameGeo = new THREE.ConeGeometry(0.22, 0.8, 8);
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.85 });
+  const flame = new THREE.Mesh(flameGeo, flameMat);
+  flame.rotation.x = Math.PI / 2; // Point along -Z
+  flame.position.z = -1.8; // Behind exhaust
+  flame.name = 'flame';
+  flame.scale.set(0.1, 0.1, 0.1);
+  missileGroup.add(flame);
+
+  // Inner flame
+  const innerFlameGeo = new THREE.ConeGeometry(0.12, 0.6, 8);
+  const innerFlameMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+  const innerFlame = new THREE.Mesh(innerFlameGeo, innerFlameMat);
+  innerFlame.rotation.x = Math.PI / 2; // Point along -Z
+  innerFlame.position.z = -1.7;
+  innerFlame.name = 'innerFlame';
+  innerFlame.scale.set(0.1, 0.1, 0.1);
+  missileGroup.add(innerFlame);
+
+  missileGroup.position.set(0, 3, 0);
+  scene.add(missileGroup);
+  missile = missileGroup;
+}
+
+// ============================================================
+// COURSE GENERATION - EXPANDED FOR BEGINNER-FRIENDLY EXPERIENCE
+// ============================================================
+function addObstacle(mesh, padX = 0, padY = 0, padZ = 0) {
+  mesh.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(mesh);
+  // Apply shrink factor for forgiveness
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  const center = new THREE.Vector3();
+  box.getCenter(center);
+  box.min.x = center.x - (size.x / 2) * (1 - OBSTACLE_SHRINK) - padX;
+  box.min.y = center.y - (size.y / 2) * (1 - OBSTACLE_SHRINK) - padY;
+  box.min.z = center.z - (size.z / 2) * (1 - OBSTACLE_SHRINK) - padZ;
+  box.max.x = center.x + (size.x / 2) * (1 - OBSTACLE_SHRINK) + padX;
+  box.max.y = center.y + (size.y / 2) * (1 - OBSTACLE_SHRINK) + padY;
+  box.max.z = center.z + (size.z / 2) * (1 - OBSTACLE_SHRINK) + padZ;
+  obstacles.push({ mesh, box });
+  return mesh;
+}
+
+function makePillar(x, y, z, w, h, d, color = 0x3a2818) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.8 });
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y + h / 2, z);
+  m.castShadow = true; m.receiveShadow = true;
+  scene.add(m);
+  addObstacle(m);
+  return m;
+}
+
+function makeHouse(x, y, z, w, h, d, color = 0xff6600) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+
+  // ENLARGED window opening for easier navigation
+  const winW = 4.8, winH = 4.8; // Was 3.2x3.2
+  const winY = 3.5; // Slightly higher center
+
+  // Front wall pieces around hole
+  const frontBottom = new THREE.Mesh(new THREE.BoxGeometry(w, winY - winH / 2, 0.5), mat);
+  frontBottom.position.set(0, (winY - winH / 2) / 2, -d / 2);
+  frontBottom.castShadow = true; frontBottom.receiveShadow = true;
+  group.add(frontBottom);
+
+  const topH = h - (winY + winH / 2);
+  const frontTop = new THREE.Mesh(new THREE.BoxGeometry(w, topH, 0.5), mat);
+  frontTop.position.set(0, winY + winH / 2 + topH / 2, -d / 2);
+  frontTop.castShadow = true; frontTop.receiveShadow = true;
+  group.add(frontTop);
+
+  const sideW = (w - winW) / 2;
+  const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(sideW, winH, 0.5), mat);
+  frontLeft.position.set(-w / 2 + sideW / 2, winY, -d / 2);
+  frontLeft.castShadow = true; frontLeft.receiveShadow = true;
+  group.add(frontLeft);
+
+  const frontRight = new THREE.Mesh(new THREE.BoxGeometry(sideW, winH, 0.5), mat);
+  frontRight.position.set(w / 2 - sideW / 2, winY, -d / 2);
+  frontRight.castShadow = true; frontRight.receiveShadow = true;
+  group.add(frontRight);
+
+  // Back wall
+  const back = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.5), mat);
+  back.position.set(0, h / 2, d / 2);
+  back.castShadow = true; back.receiveShadow = true;
+  group.add(back);
+
+  // Side walls
+  const left = new THREE.Mesh(new THREE.BoxGeometry(0.5, h, d), mat);
+  left.position.set(-w / 2, h / 2, 0);
+  left.castShadow = true; left.receiveShadow = true;
+  group.add(left);
+
+  const right = new THREE.Mesh(new THREE.BoxGeometry(0.5, h, d), mat);
+  right.position.set(w / 2, h / 2, 0);
+  right.castShadow = true; right.receiveShadow = true;
+  group.add(right);
+
+  // Roof
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.5, 0.5, d + 0.5), darkMat);
+  roof.position.set(0, h + 0.25, 0);
+  roof.castShadow = true;
+  group.add(roof);
+
+  group.position.set(x, y, z);
+  scene.add(group);
+
+  // Add collision boxes
+  group.children.forEach(child => {
+    child.updateMatrixWorld(true);
+    const worldPos = new THREE.Vector3();
+    child.getWorldPosition(worldPos);
+    const params = child.geometry.parameters;
+    const box = new THREE.Box3(
+      new THREE.Vector3(worldPos.x - params.width / 2, worldPos.y - params.height / 2, worldPos.z - params.depth / 2),
+      new THREE.Vector3(worldPos.x + params.width / 2, worldPos.y + params.height / 2, worldPos.z + params.depth / 2)
+    );
+    // Apply shrink
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    box.min.x = center.x - (size.x / 2) * (1 - OBSTACLE_SHRINK);
+    box.min.y = center.y - (size.y / 2) * (1 - OBSTACLE_SHRINK);
+    box.min.z = center.z - (size.z / 2) * (1 - OBSTACLE_SHRINK);
+    box.max.x = center.x + (size.x / 2) * (1 - OBSTACLE_SHRINK);
+    box.max.y = center.y + (size.y / 2) * (1 - OBSTACLE_SHRINK);
+    box.max.z = center.z + (size.z / 2) * (1 - OBSTACLE_SHRINK);
+    obstacles.push({ mesh: child, box });
+  });
+  return group;
+}
+
+function makeTunnel(x, y, z, length, width, height, color = 0x2a2a2a) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.9 });
+
+  // ENLARGED tunnel for easier navigation (was 6x7, now 8x8)
+  const lw = new THREE.Mesh(new THREE.BoxGeometry(0.8, height, length), mat);
+  lw.position.set(-width / 2, height / 2, 0);
+  lw.castShadow = true; lw.receiveShadow = true;
+  group.add(lw);
+
+  const rw = new THREE.Mesh(new THREE.BoxGeometry(0.8, height, length), mat);
+  rw.position.set(width / 2, height / 2, 0);
+  rw.castShadow = true; rw.receiveShadow = true;
+  group.add(rw);
+
+  const ceil = new THREE.Mesh(new THREE.BoxGeometry(width + 0.8, 0.8, length), mat);
+  ceil.position.set(0, height, 0);
+  ceil.castShadow = true; ceil.receiveShadow = true;
+  group.add(ceil);
+
+  // Ceiling lights
+  const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+  for (let i = 0; i < length; i += 8) {
+    const light = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.15, 0.5), lightMat);
+    light.position.set(0, height - 0.1, -length / 2 + i + 4);
+    group.add(light);
+    const pLight = new THREE.PointLight(0xffeeaa, 0.5, 10);
+    pLight.position.copy(light.position);
+    group.add(pLight);
+  }
+
+  group.position.set(x, y, z);
+  scene.add(group);
+
+  group.children.forEach(child => {
+    if (child.isMesh && child.geometry.parameters) {
+      child.updateMatrixWorld(true);
+      const worldPos = new THREE.Vector3();
+      child.getWorldPosition(worldPos);
+      const params = child.geometry.parameters;
+      const box = new THREE.Box3(
+        new THREE.Vector3(worldPos.x - params.width / 2, worldPos.y - params.height / 2, worldPos.z - params.depth / 2),
+        new THREE.Vector3(worldPos.x + params.width / 2, worldPos.y + params.height / 2, worldPos.z + params.depth / 2)
+      );
+      // Apply shrink
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      box.min.x = center.x - (size.x / 2) * (1 - OBSTACLE_SHRINK);
+      box.min.y = center.y - (size.y / 2) * (1 - OBSTACLE_SHRINK);
+      box.min.z = center.z - (size.z / 2) * (1 - OBSTACLE_SHRINK);
+      box.max.x = center.x + (size.x / 2) * (1 - OBSTACLE_SHRINK);
+      box.max.y = center.y + (size.y / 2) * (1 - OBSTACLE_SHRINK);
+      box.max.z = center.z + (size.z / 2) * (1 - OBSTACLE_SHRINK);
+      obstacles.push({ mesh: child, box });
+    }
+  });
+  return group;
+}
+
+function createCourse() {
+  // === Section 1: EXPANDED Open starting area (z: 0 to 100) ===
+  // More space for player to stabilize before obstacles
+  for (let i = 0; i < 5; i++) {
+    makePillar(-15, 0, 15 + i * 15, 2, 8, 2, 0x4a3828);
+    makePillar(15, 0, 15 + i * 15, 2, 8, 2, 0x4a3828);
+  }
+
+  // === Section 2: WIDER Pillar Canyon (z: 110 to 220) ===
+  // Wider gaps and more gradual difficulty
+  for (let z = 110; z < 220; z += 14) {
+    // Wider canyon (was ±8, now ±10)
+    makePillar(-10 + Math.sin(z * 0.1) * 2, 0, z, 2.5, 14, 2.5, 0x3a2818);
+    makePillar(10 + Math.cos(z * 0.1) * 2, 0, z, 2.5, 14, 2.5, 0x3a2818);
+    // Middle obstacles only in later section for gradual difficulty
+    if (z > 170 && z % 28 === 10) {
+      makePillar(-3, 0, z, 1.5, 10, 1.5, 0x2a1808);
+    }
+    if (z > 170 && z % 28 === 24) {
+      makePillar(3, 0, z, 1.5, 10, 1.5, 0x2a1808);
+    }
+  }
+
+  // === Section 3: Orange House with ENLARGED window (z: 240) ===
+  makeHouse(0, 0, 240, 14, 10, 8, 0xff6600);
+
+  // === Section 4: ENLARGED Dark tunnel (z: 270 to 350) ===
+  makeTunnel(0, 0, 310, 80, 8, 8, 0x2a2a2a); // Was 6x7, now 8x8
+
+  // === Section 5: Final clearing with target (z: 360 to 410) ===
+  for (let i = 0; i < 3; i++) {
+    makePillar(-12, 0, 370 + i * 12, 2, 6, 2, 0x4a3828);
+    makePillar(12, 0, 370 + i * 12, 2, 6, 2, 0x4a3828);
+  }
+
+  // Target block
+  const targetGeo = new THREE.BoxGeometry(6, 6, 2);
+  const targetMat = new THREE.MeshStandardMaterial({
+    color: 0xff6600,
+    emissive: 0xff3300,
+    emissiveIntensity: 0.6,
+    roughness: 0.4
+  });
+  targetMesh = new THREE.Mesh(targetGeo, targetMat);
+  targetMesh.position.set(0, 3, 405);
+  targetMesh.castShadow = true;
+  scene.add(targetMesh);
+
+  // Target glow
+  const glowGeo = new THREE.BoxGeometry(7, 7, 0.5);
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xffaa33, transparent: true, opacity: 0.3 });
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  glow.position.set(0, 3, 403);
+  scene.add(glow);
+
+  const targetLight = new THREE.PointLight(0xff6600, 1.5, 20);
+  targetLight.position.set(0, 3, 403);
+  scene.add(targetLight);
+
+  // Add target to obstacles
+  targetMesh.updateMatrixWorld(true);
+  const tBox = new THREE.Box3().setFromObject(targetMesh);
+  obstacles.push({ mesh: targetMesh, box: tBox, isTarget: true });
+
+  // Side boundary walls (extended for longer course)
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.9 });
+  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(2, 30, 450), wallMat);
+  leftWall.position.set(-28, 15, 200);
+  scene.add(leftWall);
+  addObstacle(leftWall);
+
+  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(2, 30, 450), wallMat);
+  rightWall.position.set(28, 15, 200);
+  scene.add(rightWall);
+  addObstacle(rightWall);
+
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(58, 30, 2), wallMat);
+  backWall.position.set(0, 15, -25);
+  scene.add(backWall);
+  addObstacle(backWall);
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+function setupInput() {
+  const canvas = renderer.domElement;
+
+  canvas.addEventListener('click', () => {
+    if (gameState === 'start') {
+      startCountdown();
+    }
+  });
+
+  document.getElementById('startBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    startCountdown();
+  });
+  document.getElementById('restartBtn1').addEventListener('click', (e) => {
+    e.stopPropagation();
+    restartGame();
+  });
+  document.getElementById('restartBtn2').addEventListener('click', (e) => {
+    e.stopPropagation();
+    restartGame();
+  });
+
+  document.addEventListener('pointerlockchange', () => {
+    pointerLocked = document.pointerLockElement === canvas;
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (pointerLocked && (gameState === 'playing' || gameState === 'countdown')) {
+      mouseDX += e.movementX;
+      mouseDY += e.movementY;
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+  });
+  document.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
+  });
+}
+
+// ============================================================
+// LAUNCH SEQUENCE - COUNTDOWN & SPOOL-UP
+// ============================================================
+function startCountdown() {
+  // Allow starting from initial state OR after game over (fixes retry bug)
+  if (gameState !== 'start' && gameState !== 'won' && gameState !== 'crashed') return;
+  
+  // Request pointer lock
+  renderer.domElement.requestPointerLock();
+  
+  // Wait briefly for pointer lock to engage
+  setTimeout(() => {
+    if (!pointerLocked) {
+      // Retry pointer lock if it failed
+      renderer.domElement.requestPointerLock();
+    }
+    
+    gameState = 'countdown';
+    countdownValue = 3;
+    countdownTimer = 0;
+    speedRampProgress = 0;
+    currentSpeed = 0;
+    
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('countdown').classList.add('visible');
+    document.getElementById('countdown').textContent = '3';
+  }, 100);
+}
+
+function updateCountdown(dt) {
+  if (gameState !== 'countdown') return;
+  
+  countdownTimer += dt;
+  
+  // Engine spool-up: flame grows during countdown
+  const spoolProgress = Math.min(countdownTimer / 3.0, 1.0);
+  const flame = missile.getObjectByName('flame');
+  const innerFlame = missile.getObjectByName('innerFlame');
+  if (flame) {
+    const scale = 0.1 + spoolProgress * 0.9;
+    flame.scale.set(scale, scale, scale);
+  }
+  if (innerFlame) {
+    const scale = 0.1 + spoolProgress * 0.9;
+    innerFlame.scale.set(scale, scale, scale);
+  }
+  
+  // Countdown display
+  if (countdownTimer >= 1.0 && countdownValue === 3) {
+    countdownValue = 2;
+    document.getElementById('countdown').textContent = '2';
+  } else if (countdownTimer >= 2.0 && countdownValue === 2) {
+    countdownValue = 1;
+    document.getElementById('countdown').textContent = '1';
+  } else if (countdownTimer >= 3.0 && countdownValue === 1) {
+    countdownValue = 0;
+    document.getElementById('countdown').textContent = 'LAUNCH!';
+    setTimeout(() => {
+      document.getElementById('countdown').classList.remove('visible');
+    }, 500);
+    
+    // Start flying
+    gameState = 'playing';
+    startTime = performance.now();
+    speedRampProgress = 0;
+  }
+}
+
+function restartGame() {
+  // Reset missile position and orientation
+  missile.position.set(0, 3, 0);
+  missile.rotation.set(0, 0, 0);
+  missile.quaternion.identity();
+  missile.visible = true; // CRITICAL: restore visibility after crash
+  
+  // Reset all physics state
+  currentSpeed = 0;
+  targetSpeed = 0;
+  speedRampProgress = 0;
+  yawVelocity = 0;
+  pitchVelocity = 0;
+  rollVelocity = 0;
+  targetRoll = 0;
+  
+  // Reset input state
+  smoothedMouseDX = 0;
+  smoothedMouseDY = 0;
+  mouseDX = 0;
+  mouseDY = 0;
+  keys = {}; // Clear all pressed keys
+  
+  // Clear all particles
+  smokeParticles.forEach(p => {
+    scene.remove(p);
+    p.geometry.dispose();
+    p.material.dispose();
+  });
+  smokeParticles = [];
+  
+  explosionParticles.forEach(p => {
+    scene.remove(p);
+    p.geometry.dispose();
+    p.material.dispose();
+  });
+  explosionParticles = [];
+  
+  // Reset flame to initial spool-up state
+  const flame = missile.getObjectByName('flame');
+  const innerFlame = missile.getObjectByName('innerFlame');
+  if (flame) flame.scale.set(0.1, 0.1, 0.1);
+  if (innerFlame) innerFlame.scale.set(0.1, 0.1, 0.1);
+  
+  // Reset UI
+  document.getElementById('gameOverScreen').classList.add('hidden');
+  document.getElementById('winScreen').classList.add('hidden');
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('hud').textContent = '0:00.00';
+  document.getElementById('speedometer').textContent = 'SPD: 0 km/h';
+  
+  // Start fresh countdown
+  startCountdown();
+}
+
+function endGame(won) {
+  gameState = won ? 'won' : 'crashed';
+  document.exitPointerLock();
+
+  const finalTime = formatTime(elapsedTime);
+  if (won) {
+    document.getElementById('winTime').textContent = finalTime;
+    document.getElementById('winScreen').classList.remove('hidden');
+    spawnExplosion(missile.position.clone(), 0xffcc00, 80);
+  } else {
+    document.getElementById('crashTime').textContent = finalTime;
+    document.getElementById('gameOverScreen').classList.remove('hidden');
+    spawnExplosion(missile.position.clone(), 0xffffff, 100);
+    missile.visible = false;
+  }
+}
+
+function formatTime(t) {
+  const minutes = Math.floor(t / 60);
+  const seconds = Math.floor(t % 60);
+  const hundredths = Math.floor((t * 100) % 100);
+  return `${minutes}:${seconds.toString().padStart(2, '0')}.${hundredths.toString().padStart(2, '0')}`;
+}
+
+// ============================================================
+// PARTICLES - REDUCED GENERATION
+// ============================================================
+function spawnSmoke() {
+  if (gameState !== 'playing') return;
+  
+  const exhaustPos = new THREE.Vector3(0, 0, 1.5);
+  exhaustPos.applyQuaternion(missile.quaternion);
+  exhaustPos.add(missile.position);
+
+  const size = 0.15 + Math.random() * 0.2;
+  const geo = new THREE.SphereGeometry(size, 5, 5);
+  const mat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color().setHSL(0, 0, 0.7 + Math.random() * 0.3),
+    transparent: true,
+    opacity: 0.7
+  });
+  const smoke = new THREE.Mesh(geo, mat);
+  smoke.position.copy(exhaustPos);
+  smoke.userData = {
+    velocity: new THREE.Vector3(
+      (Math.random() - 0.5) * 0.5,
+      (Math.random() - 0.5) * 0.5,
+      (Math.random() - 0.5) * 0.5
+    ),
+    life: 1.0,
+    decay: 0.6 + Math.random() * 0.4
+  };
+  scene.add(smoke);
+  smokeParticles.push(smoke);
+}
+
+function spawnExplosion(pos, color, count = 60) {
+  for (let i = 0; i < count; i++) {
+    const size = 0.2 + Math.random() * 0.5;
+    const geo = new THREE.BoxGeometry(size, size, size);
+    const shade = Math.random();
+    const c = new THREE.Color(color);
+    if (shade > 0.5) c.setHex(0xffffff);
+    else if (shade > 0.25) c.setHex(0xaaaaaa);
+    else c.setHex(color);
+    const mat = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.3 });
+    const cube = new THREE.Mesh(geo, mat);
+    cube.position.copy(pos);
+    cube.position.x += (Math.random() - 0.5) * 0.5;
+    cube.position.y += (Math.random() - 0.5) * 0.5;
+    cube.position.z += (Math.random() - 0.5) * 0.5;
+    const speed = 8 + Math.random() * 15;
+    const dir = new THREE.Vector3(
+      (Math.random() - 0.5),
+      (Math.random() - 0.2),
+      (Math.random() - 0.5)
+    ).normalize().multiplyScalar(speed);
+    cube.userData = {
+      velocity: dir,
+      rotSpeed: new THREE.Vector3(Math.random() * 10, Math.random() * 10, Math.random() * 10),
+      life: 2.5 + Math.random() * 1.5
+    };
+    scene.add(cube);
+    explosionParticles.push(cube);
+  }
+}
+
+function updateParticles(dt) {
+  // Smoke
+  for (let i = smokeParticles.length - 1; i >= 0; i--) {
+    const s = smokeParticles[i];
+    s.userData.life -= dt * s.userData.decay;
+    s.position.add(s.userData.velocity.clone().multiplyScalar(dt));
+    s.userData.velocity.multiplyScalar(0.95);
+    s.material.opacity = Math.max(0, s.userData.life * 0.7);
+    s.scale.multiplyScalar(1 + dt * 1.5);
+    if (s.userData.life <= 0) {
+      scene.remove(s);
+      s.geometry.dispose();
+      s.material.dispose();
+      smokeParticles.splice(i, 1);
+    }
+  }
+
+  // Explosion
+  for (let i = explosionParticles.length - 1; i >= 0; i--) {
+    const p = explosionParticles[i];
+    p.userData.life -= dt;
+    p.userData.velocity.y -= 15 * dt;
+    p.position.add(p.userData.velocity.clone().multiplyScalar(dt));
+    p.rotation.x += p.userData.rotSpeed.x * dt;
+    p.rotation.y += p.userData.rotSpeed.y * dt;
+    p.rotation.z += p.userData.rotSpeed.z * dt;
+    p.userData.velocity.multiplyScalar(0.98);
+    if (p.position.y < 0.2) {
+      p.position.y = 0.2;
+      p.userData.velocity.y *= -0.3;
+      p.userData.velocity.x *= 0.7;
+      p.userData.velocity.z *= 0.7;
+    }
+    if (p.userData.life <= 0) {
+      scene.remove(p);
+      p.geometry.dispose();
+      p.material.dispose();
+      explosionParticles.splice(i, 1);
+    }
+  }
+}
+
+// ============================================================
+// COLLISION - FORGIVING WITH GRACE MARGIN
+// ============================================================
+function checkCollisions() {
+  const mPos = missile.position;
+  // Reduced collision radius for forgiveness
+  const r = MISSILE_COLLISION_RADIUS;
+  const mBox = new THREE.Box3(
+    new THREE.Vector3(mPos.x - r, mPos.y - r, mPos.z - r),
+    new THREE.Vector3(mPos.x + r, mPos.y + r, mPos.z + r)
+  );
+
+  for (const obs of obstacles) {
+    if (obs.box.intersectsBox(mBox)) {
+      if (obs.isTarget) {
+        endGame(true);
+        return;
+      }
+      if (obs.isFloor) {
+        if (mPos.y < 0.5) {
+          endGame(false);
+          return;
+        }
+      } else {
+        // Calculate penetration depth for grace margin
+        const overlap = new THREE.Box3();
+        overlap.copy(mBox).intersect(obs.box);
+        const overlapSize = new THREE.Vector3();
+        overlap.getSize(overlapSize);
+        const maxOverlap = Math.max(overlapSize.x, overlapSize.y, overlapSize.z);
+        
+        // Only crash if penetration exceeds grace margin
+        if (maxOverlap > GRACE_MARGIN) {
+          endGame(false);
+          return;
+        }
+      }
+    }
+  }
+}
+
+// ============================================================
+// MISSILE UPDATE - INERTIA-BASED FLIGHT CONTROLS
+// ============================================================
+function updateMissile(dt) {
+  if (gameState !== 'playing') return;
+
+  // === SPEED ACCELERATION ===
+  speedRampProgress = Math.min(speedRampProgress + dt / ACCEL_TIME, 1.0);
+  const easedProgress = 1 - Math.pow(1 - speedRampProgress, 3);
+  targetSpeed = MAX_SPEED * easedProgress;
+  
+  if (keys['ShiftLeft'] || keys['ShiftRight']) {
+    targetSpeed = MAX_SPEED * BOOST_MULT * easedProgress;
+  }
+  
+  currentSpeed += (targetSpeed - currentSpeed) * Math.min(dt * 2.0, 1.0);
+
+  // === INPUT PROCESSING ===
+  // Very light mouse smoothing (80% responsive, 20% smoothing to avoid jitter)
+  const mouseResponsiveness = 0.8;
+  smoothedMouseDX = smoothedMouseDX * (1 - mouseResponsiveness) + mouseDX * mouseResponsiveness;
+  smoothedMouseDY = smoothedMouseDY * (1 - mouseResponsiveness) + mouseDY * mouseResponsiveness;
+  
+  // Mouse → target angular velocity (direct, responsive mapping)
+  const targetYawVel = -smoothedMouseDX * YAW_SENSITIVITY * MAX_YAW_RATE;
+  const targetPitchVel = smoothedMouseDY * PITCH_SENSITIVITY * MAX_PITCH_RATE;
+  
+  // Keyboard → target angular velocity
+  let kbYawTarget = 0, kbPitchTarget = 0;
+  const kbMaxRate = 3.0; // rad/s for keyboard
+  if (keys['KeyA'] || keys['ArrowLeft']) kbYawTarget += kbMaxRate;
+  if (keys['KeyD'] || keys['ArrowRight']) kbYawTarget -= kbMaxRate;
+  if (keys['KeyW'] || keys['ArrowUp']) kbPitchTarget -= kbMaxRate;
+  if (keys['KeyS'] || keys['ArrowDown']) kbPitchTarget += kbMaxRate;
+  
+  // Combine mouse and keyboard targets
+  const finalTargetYawVel = targetYawVel + kbYawTarget;
+  const finalTargetPitchVel = targetPitchVel + kbPitchTarget;
+  
+  // Smoothly approach target velocity (fast response, frame-rate independent)
+  const responseFactor = Math.min(20.0 * dt, 1.0);
+  yawVelocity += (finalTargetYawVel - yawVelocity) * responseFactor;
+  pitchVelocity += (finalTargetPitchVel - pitchVelocity) * responseFactor;
+  
+  // Detect if input is inactive
+  const mouseInactive = Math.abs(mouseDX) < 0.5 && Math.abs(mouseDY) < 0.5;
+  const kbInactive = kbYawTarget === 0 && kbPitchTarget === 0;
+  
+  // Quick decay when no input (inertia - velocity drops to 1% per second)
+  if (mouseInactive && kbInactive) {
+    const decayFactor = Math.pow(0.01, dt);
+    yawVelocity *= decayFactor;
+    pitchVelocity *= decayFactor;
+    // Also decay smoothed input to avoid residual target
+    smoothedMouseDX *= decayFactor;
+    smoothedMouseDY *= decayFactor;
+  }
+  
+  // Reset raw mouse delta AFTER processing
+  mouseDX = 0;
+  mouseDY = 0;
+
+  // === BANKING DURING TURNS ===
+  targetRoll = -yawVelocity * BANKING_FACTOR * 0.5;
+  rollVelocity += (targetRoll - rollVelocity) * Math.min(dt * 5.0, 1.0);
+  
+  // Decay roll when not turning
+  if (Math.abs(yawVelocity) < 0.1) {
+    rollVelocity *= Math.pow(0.05, dt);
+  }
+
+  // === APPLY ROTATION (CRITICAL FIX) ===
+  // CORRECT quaternion multiplication order:
+  // - Yaw in WORLD space (premultiply)
+  // - Pitch in LOCAL space (multiply) - always around missile's local right axis
+  // - Roll in LOCAL space (multiply) - always around missile's local forward axis
+  // This ensures the missile nose always points in the direction of travel
+  if (Math.abs(yawVelocity) > 0.0001 || Math.abs(pitchVelocity) > 0.0001 || Math.abs(rollVelocity) > 0.0001) {
+    const yawQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yawVelocity * dt);
+    const pitchQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitchVelocity * dt);
+    const rollQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rollVelocity * dt);
+    
+    missile.quaternion.premultiply(yawQ);   // World yaw
+    missile.quaternion.multiply(pitchQ);    // Local pitch (fixed axis)
+    missile.quaternion.multiply(rollQ);     // Local roll (fixed axis)
+    missile.quaternion.normalize();
+  }
+
+  // === MOVE FORWARD ===
+  const forwardVec = new THREE.Vector3(0, 0, 1).applyQuaternion(missile.quaternion);
+  missile.position.add(forwardVec.multiplyScalar(currentSpeed * dt));
+
+  // === FLAME ANIMATION ===
+  const flame = missile.getObjectByName('flame');
+  const innerFlame = missile.getObjectByName('innerFlame');
+  const speedFactor = currentSpeed / MAX_SPEED;
+  
+  if (flame) {
+    const flick = 0.8 + Math.random() * 0.4;
+    const baseScale = 0.5 + speedFactor * 0.5;
+    flame.scale.set(baseScale * flick, baseScale * flick, baseScale * (0.8 + Math.random() * 0.4));
+    if (keys['ShiftLeft'] || keys['ShiftRight']) {
+      flame.scale.multiplyScalar(1.3);
+      flame.material.color.setHex(0xffaa00);
+    } else {
+      flame.material.color.setHex(0xff6600);
+    }
+  }
+  if (innerFlame) {
+    const flick = 0.8 + Math.random() * 0.3;
+    const baseScale = 0.4 + speedFactor * 0.4;
+    innerFlame.scale.set(baseScale * flick, baseScale * flick, baseScale * (0.7 + Math.random() * 0.4));
+  }
+
+  // === SMOKE TRAIL ===
+  const smokeChance = SMOKE_SPAWN_RATE * speedFactor;
+  if (Math.random() < smokeChance) spawnSmoke();
+  if (keys['ShiftLeft'] || keys['ShiftRight']) {
+    if (Math.random() < BOOST_SMOKE_RATE) spawnSmoke();
+  }
+}
+
+// ============================================================
+// CAMERA - IMPROVED CHASE CAM
+// ============================================================
+function updateCamera() {
+  // Calculate desired camera position behind and above missile
+  const back = new THREE.Vector3(0, 0, -1).applyQuaternion(missile.quaternion);
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(missile.quaternion);
+
+  const desiredPos = missile.position.clone()
+    .add(back.multiplyScalar(CAMERA_OFFSET.z))
+    .add(up.multiplyScalar(CAMERA_OFFSET.y));
+
+  // Smooth follow with increased responsiveness
+  camera.position.lerp(desiredPos, CAMERA_SMOOTHING);
+
+  // Look-ahead: look further in front of missile
+  const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(missile.quaternion);
+  const lookTarget = missile.position.clone().add(forward.multiplyScalar(CAMERA_LOOK_AHEAD));
+  camera.lookAt(lookTarget);
+
+  // FOV adjustment for boost
+  const targetFOV = (keys['ShiftLeft'] || keys['ShiftRight']) ? BOOST_FOV : BASE_FOV;
+  currentFOV += (targetFOV - currentFOV) * 0.1;
+  camera.fov = currentFOV;
+  camera.updateProjectionMatrix();
+}
+
+function updateHUD() {
+  if (gameState === 'playing') {
+    elapsedTime = (performance.now() - startTime) / 1000;
+    document.getElementById('hud').textContent = formatTime(elapsedTime);
+    document.getElementById('speedometer').textContent = `SPD: ${Math.round(currentSpeed * 3.6)} km/h`;
+    document.getElementById('altitude').textContent = `ALT: ${missile.position.y.toFixed(1)}m`;
+  } else if (gameState === 'countdown') {
+    document.getElementById('hud').textContent = '0:00.00';
+    document.getElementById('speedometer').textContent = `SPD: 0 km/h`;
+    document.getElementById('altitude').textContent = `ALT: ${missile.position.y.toFixed(1)}m`;
+  }
+}
+
+// ============================================================
+// ANIMATION LOOP
+// ============================================================
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if (gameState === 'countdown') {
+    updateCountdown(dt);
+  } else if (gameState === 'playing') {
+    updateMissile(dt);
+    checkCollisions();
+  }
+  
+  updateCamera();
+  updateParticles(dt);
+  updateHUD();
+
+  // Target pulse
+  if (targetMesh) {
+    const pulse = 0.5 + Math.sin(performance.now() * 0.005) * 0.2;
+    targetMesh.material.emissiveIntensity = pulse;
+  }
+
+  renderer.render(scene, camera);
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
