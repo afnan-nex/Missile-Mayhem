@@ -20,8 +20,6 @@
 
 # 📸 Screenshots
 
-> Replace these placeholders with your screenshots.
-
 | Gameplay | Obstacle Course |
 |----------|-----------------|
 | ![](screenshots/gameplay.png) | ![](screenshots/course.png) |
